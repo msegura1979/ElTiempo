@@ -28,12 +28,14 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
     private final String LOG_TAG = MainActivity.class.getSimpleName();
     private static final String DETAILFRAGMENT_TAG = "DFTAG";
 
-    private boolean mTwoPane;
+    private Boolean mTwoPane;
     private String mLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(LOG_TAG,"onCreate Main");
         super.onCreate(savedInstanceState);
+
         mLocation = Utility.getPreferredLocation(this);
 
         setContentView(R.layout.activity_main);

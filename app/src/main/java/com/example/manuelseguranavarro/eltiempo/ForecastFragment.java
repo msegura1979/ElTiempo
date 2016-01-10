@@ -15,6 +15,7 @@
  */
 package com.example.manuelseguranavarro.eltiempo;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -22,6 +23,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -31,6 +33,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import com.example.manuelseguranavarro.eltiempo.Sincronizar.SincronizaAdaptador;
 import com.example.manuelseguranavarro.eltiempo.data.WeatherContract;
 
 /**
@@ -38,14 +41,18 @@ import com.example.manuelseguranavarro.eltiempo.data.WeatherContract;
  */
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
     private ForecastAdapter mForecastAdapter;
-
+    private final String LOG_TAG = ForecastFragment.class.getSimpleName();
     private ListView mListView;
     private int mPosition = ListView.INVALID_POSITION;
 
     private static final String SELECTED_KEY = "selected_position";
-    private boolean mUseTodayLayout;
+    private Boolean mUseTodayLayout;
 
+    static final String FORECAST_POSITION = "FORECAST_POSITION";
     private static final int FORECAST_LOADER = 0;
+
+    private int mForecastPosition = -1;
+
     // For the forecast view we're showing only a small subset of the stored data.
     // Specify the columns we need.
     private static final String[] FORECAST_COLUMNS = {
@@ -121,10 +128,14 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-
+        // Read the position of the currently selected forecast item
+        if (null != savedInstanceState) {
+            mForecastPosition = savedInstanceState.getInt(FORECAST_POSITION, ListView.INVALID_POSITION);
+        }
         // The ForecastAdapter will take data from a source and
         // use it to populate the ListView it's attached to.
         mForecastAdapter = new ForecastAdapter(getActivity(), null, 0);
+        mForecastAdapter.setUseTodayLayout(mUseTodayLayout);
 
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
@@ -136,31 +147,18 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                mForecastPosition = position;
                 // CursorAdapter returns a cursor at the correct position for getItem(), or null
                 // if it cannot seek to that position.
                 Cursor cursor = (Cursor) adapterView.getItemAtPosition(position);
                 if (cursor != null) {
                     String locationSetting = Utility.getPreferredLocation(getActivity());
-                    ((Callback) getActivity())
-                            .onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
-                                    locationSetting, cursor.getLong(COL_WEATHER_DATE)
-                            ));
+                    Uri dateUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationSetting, cursor.getLong(COL_WEATHER_DATE));
+                    ((Callback) getActivity()).onItemSelected(dateUri);
+
                 }
-                mForecastAdapter.setUseTodayLayout(mUseTodayLayout);
-                mPosition = position;
             }
         });
-
-        // If there's instance state, mine it for useful information.
-        // The end-goal here is that the user never knows that turning their device sideways
-        // does crazy lifecycle related things.  It should feel like some stuff stretched out,
-        // or magically appeared to take advantage of room, but data or place in the app was never
-        // actually *lost*.
-        if (savedInstanceState != null && savedInstanceState.containsKey(SELECTED_KEY)) {
-            // The listview probably hasn't even been populated yet.  Actually perform the
-            // swapout in onLoadFinished.
-            mPosition = savedInstanceState.getInt(SELECTED_KEY);
-        }
 
         return rootView;
     }
@@ -173,8 +171,8 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
-        getLoaderManager().initLoader(FORECAST_LOADER, null, this);
         super.onActivityCreated(savedInstanceState);
+        getLoaderManager().initLoader(FORECAST_LOADER, null, this);
     }
 
     // since we read the location when we create the loader, all we need to do is restart things
@@ -184,9 +182,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
 
     private void updateWeather() {
-        FetchWeatherTask weatherTask = new FetchWeatherTask(getActivity());
-        String location = Utility.getPreferredLocation(getActivity());
-        weatherTask.execute(location);
+        SincronizaAdaptador.syncImmediately(getActivity());
     }
 
     @Override
@@ -236,5 +232,35 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public void onLoaderReset(Loader<Cursor> cursorLoader) {
         mForecastAdapter.swapCursor(null);
+    }
+
+    public void setmUseTodayLayout(boolean useTodayLayout){
+        mUseTodayLayout = useTodayLayout;
+        if (mForecastAdapter != null){
+            mForecastAdapter.setUseTodayLayout(mUseTodayLayout);
+        }
+    }
+    public void openPreferredLocationInMap() {
+        if (null != mForecastAdapter) {
+            Cursor cursor = mForecastAdapter.getCursor();
+
+            if (null != cursor) {
+                cursor.moveToFirst();
+
+                Double lat = cursor.getDouble(COL_COORD_LAT);
+                Double lon = cursor.getDouble(COL_COORD_LONG);
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+
+                Uri geoLocation = Uri.parse("geo:" + lat + "," + lon);
+                intent.setData(geoLocation);
+
+                if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+                    startActivity(intent);
+                } else {
+                    Log.d(LOG_TAG, String.format("No puede llamar al la app de mapas", geoLocation.toString()));
+                }
+            }
+        }
     }
 }

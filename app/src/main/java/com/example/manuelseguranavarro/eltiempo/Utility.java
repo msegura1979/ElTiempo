@@ -19,10 +19,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.text.format.Time;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
 
 public class Utility {
     public static String getPreferredLocation(Context context) {
@@ -38,14 +38,14 @@ public class Utility {
                 .equals(context.getString(R.string.pref_units_metric));
     }
 
-    static String formatTemperature(Context context, double temperature, boolean isMetric) {
-        double temp;
-        if ( !isMetric ) {
-            temp = 9*temperature/5+32;
+    public static String formatTemperature(Context context, double temperature) {
+
+        if ( !isMetric(context) ) {
+            temperature = 9*temperature/5+32;
         } else {
-            temp = temperature;
+            temperature = temperature;
         }
-        return context.getString(R.string.format_temperature, temp);
+        return String.format(context.getString(R.string.format_temperature, temperature));
     }
 
     static String formatDate(long dateInMilliseconds) {
