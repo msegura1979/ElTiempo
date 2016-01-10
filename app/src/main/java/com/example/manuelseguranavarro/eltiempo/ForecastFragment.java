@@ -118,8 +118,12 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_refresh) {
+       /* if (id == R.id.action_refresh) {
             updateWeather();
+            return true;
+        }*/
+        if (id == R.id.action_map) {
+            openPreferredLocationInMap();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -245,10 +249,11 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             Cursor cursor = mForecastAdapter.getCursor();
 
             if (null != cursor) {
-                cursor.moveToFirst();
+                //cursor.moveToFirst();
+                cursor.moveToPosition(0);
 
-                Double lat = cursor.getDouble(COL_COORD_LAT);
-                Double lon = cursor.getDouble(COL_COORD_LONG);
+                String lat = cursor.getString(COL_COORD_LAT);
+                String lon = cursor.getString(COL_COORD_LONG);
 
                 Intent intent = new Intent(Intent.ACTION_VIEW);
 
